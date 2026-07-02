@@ -17,9 +17,9 @@ function getTextColor(cell) {
 
 function getExportPreset(options = {}) {
   const preset = options.preset || "high";
-  if (preset === "normal") return { cellSize: 20, titleHeight: 76, statsMinHeight: 88 };
+  if (preset === "normal") return { cellSize: 24, titleHeight: 76, statsMinHeight: 88 };
   if (preset === "ultra") return { cellSize: 30, titleHeight: 92, statsMinHeight: 132 };
-  return { cellSize: 24, titleHeight: 84, statsMinHeight: 108 };
+  return { cellSize: 28, titleHeight: 84, statsMinHeight: 108 };
 }
 
 function createCanvas(width, height) {
@@ -93,7 +93,18 @@ function drawStatsBar(ctx, grid, startX, startY, width) {
   return cursorY - startY + cardHeight;
 }
 
-function drawPatternBoard(ctx, grid, boardX, boardY, cellSize, includeCoordinates, forceCodes) {
+function drawFullCode(ctx, renderer, cell, px, py, cellSize) {
+  const displayCode = renderer.getDisplayCode(cell.code, cellSize, "always", true);
+  if (!displayCode) return;
+  const fontSize = renderer.getCodeFontSize(cellSize, displayCode, true);
+  ctx.fillStyle = getTextColor(cell);
+  ctx.font = `700 ${fontSize}px "Trebuchet MS", "Segoe UI", sans-serif`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(displayCode, px + cellSize / 2, py + cellSize / 2 + 0.4);
+}
+
+function drawPatternBoard(ctx, renderer, grid, boardX, boardY, cellSize, includeCoordinates, forceCodes) {
   const boardWidth = grid.width * cellSize;
   const boardHeight = grid.height * cellSize;
   ctx.fillStyle = "#ffffff";
@@ -111,11 +122,7 @@ function drawPatternBoard(ctx, grid, boardX, boardY, cellSize, includeCoordinate
       ctx.fillStyle = cell.color;
       ctx.fillRect(px, py, cellSize, cellSize);
       if (forceCodes) {
-        ctx.fillStyle = getTextColor(cell);
-        ctx.font = `${Math.min(14, Math.max(9, cellSize * 0.46))}px "Trebuchet MS", "Segoe UI", sans-serif`;
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillText(cell.code, px + cellSize / 2, py + cellSize / 2 + 0.4);
+        drawFullCode(ctx, renderer, cell, px, py, cellSize);
       }
     }
   }
@@ -124,7 +131,11 @@ function drawPatternBoard(ctx, grid, boardX, boardY, cellSize, includeCoordinate
     const lineX = boardX + index * cellSize;
     ctx.beginPath();
     ctx.lineWidth = index % 10 === 0 ? 2 : index % 5 === 0 ? 1.2 : 0.8;
-    ctx.strokeStyle = index % 10 === 0 ? "rgba(129, 146, 178, 0.72)" : index % 5 === 0 ? "rgba(171, 185, 208, 0.52)" : "rgba(193, 203, 222, 0.34)";
+    ctx.strokeStyle = index % 10 === 0
+      ? "rgba(129, 146, 178, 0.72)"
+      : index % 5 === 0
+        ? "rgba(171, 185, 208, 0.52)"
+        : "rgba(193, 203, 222, 0.34)";
     ctx.moveTo(lineX, boardY);
     ctx.lineTo(lineX, boardY + boardHeight);
     ctx.stroke();
@@ -134,7 +145,11 @@ function drawPatternBoard(ctx, grid, boardX, boardY, cellSize, includeCoordinate
     const lineY = boardY + index * cellSize;
     ctx.beginPath();
     ctx.lineWidth = index % 10 === 0 ? 2 : index % 5 === 0 ? 1.2 : 0.8;
-    ctx.strokeStyle = index % 10 === 0 ? "rgba(129, 146, 178, 0.72)" : index % 5 === 0 ? "rgba(171, 185, 208, 0.52)" : "rgba(193, 203, 222, 0.34)";
+    ctx.strokeStyle = index % 10 === 0
+      ? "rgba(129, 146, 178, 0.72)"
+      : index % 5 === 0
+        ? "rgba(171, 185, 208, 0.52)"
+        : "rgba(193, 203, 222, 0.34)";
     ctx.moveTo(boardX, lineY);
     ctx.lineTo(boardX + boardWidth, lineY);
     ctx.stroke();
@@ -224,7 +239,7 @@ export function exportPatternPNG(renderer, options = {}) {
   drawTitleBlock(ctx, grid, title, subtitle, canvasWidth, outerPadding, outerPadding, titleHeight);
   const boardX = outerPadding + coordinateBand;
   const boardY = outerPadding + titleHeight + 18 + coordinateBand;
-  drawPatternBoard(ctx, grid, boardX, boardY, cellSize, includeCoordinates, true);
+  drawPatternBoard(ctx, renderer, grid, boardX, boardY, cellSize, includeCoordinates, true);
   if (includeStats) {
     drawStatsBar(ctx, grid, outerPadding, boardY + boardHeight + coordinateBand + 16, canvasWidth - outerPadding * 2);
   }

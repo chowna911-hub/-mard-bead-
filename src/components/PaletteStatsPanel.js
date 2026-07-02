@@ -12,10 +12,9 @@ export function createPaletteStatsPanel({ onSelectCode }) {
   element.innerHTML = `
     <div class="stats-head compact-stats-head">
       <div>
-        <h2>颜色豆盒</h2>
-        <p>点一下色号选画笔，底稿里对应位置会高亮出来。</p>
+        <h2>✦ MARD 211 色号表</h2>
       </div>
-      <button type="button" class="secondary-btn" data-action="clear-focus">清空选择</button>
+      <button type="button" class="cloud-clear-btn" data-action="clear-focus" aria-label="清空颜色选择">☁</button>
     </div>
     <div class="palette-summary"></div>
     <div class="palette-grid"></div>
@@ -35,18 +34,7 @@ export function createPaletteStatsPanel({ onSelectCode }) {
       const totalCells = progressStats?.totalTargetCells ?? 0;
 
       summary.innerHTML = `
-        <div class="summary-pill">
-          <strong>${totalColors}</strong>
-          <span>全部色号</span>
-        </div>
-        <div class="summary-pill">
-          <strong>${usedColors}</strong>
-          <span>本图使用</span>
-        </div>
-        <div class="summary-pill">
-          <strong>${placedCells}/${totalCells}</strong>
-          <span>当前进度</span>
-        </div>
+        <div class="palette-caption">共 ${totalColors} 色 · 本图使用 ${usedColors} 色 · 已拼 ${placedCells}/${totalCells}</div>
       `;
 
       grid.innerHTML = "";
@@ -59,10 +47,9 @@ export function createPaletteStatsPanel({ onSelectCode }) {
         card.type = "button";
         card.className = `palette-card${activeCode === entry.code ? " is-active" : ""}${isUsed ? " is-used" : ""}`;
         card.innerHTML = `
-          <span class="palette-swatch" style="background:${entry.hex}; color:${swatchTextColor}">${entry.code}</span>
+          <span class="palette-swatch" style="background:${entry.hex}; color:${swatchTextColor}"></span>
           <strong>${entry.code}</strong>
-          <span class="palette-name">${entry.name}</span>
-          <em>${countText || "未使用"}</em>
+          <em>${countText || entry.name}</em>
         `;
         card.addEventListener("click", () => {
           onSelectCode(entry.code, {

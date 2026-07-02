@@ -7,18 +7,6 @@ function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
 }
 
-function cloneGrid(grid) {
-  return {
-    ...grid,
-    cells: grid.cells.map((row) => row.map((cell) => ({
-      ...cell,
-      rgb: Array.isArray(cell.rgb) ? cell.rgb.slice() : cell.rgb,
-      _sample: cell._sample ? { ...cell._sample } : cell._sample
-    }))),
-    paletteStats: JSON.parse(JSON.stringify(grid.paletteStats || {}))
-  };
-}
-
 function cloneProgressGrid(progressGrid) {
   return {
     width: progressGrid.width,
@@ -53,9 +41,8 @@ export class PatternCanvasRenderer {
     this.toolMode = "view";
     this.selectedCode = null;
     this.selectedColor = null;
-    this.showCodesMode = "auto";
+    this.codeDisplayMode = "auto";
     this.exportShowCodes = "always";
-    this.codeVisibleMinCellSize = 12;
     this.zoomLevel = 1;
     this.panX = 0;
     this.panY = 0;
@@ -65,12 +52,15 @@ export class PatternCanvasRenderer {
     this.maxZoom = 8;
     this.metrics = { side: 0 };
     this.hoverCell = null;
+    this.cellTooltip = null;
     this.history = [];
     this.future = [];
     this.onViewportChange = options.onViewportChange || (() => {});
     this.onGridChange = options.onGridChange || (() => {});
     this.onToolStateChange = options.onToolStateChange || (() => {});
     this.onStatus = options.onStatus || (() => {});
+    this.onTooltipChange = options.onTooltipChange || (() => {});
+    this.onCodeDisplayModeChange = options.onCodeDisplayModeChange || (() => {});
   }
 
   resize() {
@@ -79,7 +69,8 @@ export class PatternCanvasRenderer {
     this.canvas.width = Math.max(1, Math.floor(rect.width * dpr));
     this.canvas.height = Math.max(1, Math.floor(rect.height * dpr));
     this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    this.metrics.side = Math.min(rect.width || 0, rect.height || 0) || Math.min(this.canvas.width / dpr, this.canvas.height / dpr);
+    this.metrics.side = Math.min(rect.width || 0, rect.height || 0)
+      || Math.min(this.canvas.width / dpr, this.canvas.height / dpr);
     this.render();
   }
 
@@ -88,6 +79,7 @@ export class PatternCanvasRenderer {
     this.progressGrid = createEmptyProgressGrid(grid);
     this.history = [];
     this.future = [];
+    this.hideCellTooltip();
     this.recalculateProgressStats();
     this.resetView();
   }
@@ -135,9 +127,46 @@ export class PatternCanvasRenderer {
     this.render();
   }
 
-  setShowCodesMode(mode) {
-    this.showCodesMode = mode;
+  setCodeDisplayMode(mode) {
+    this.codeDisplayMode = mode;
+    this.onCodeDisplayModeChange(mode);
     this.render();
+  }
+
+  setShowCodesMode(mode) {
+    const normalized = mode === "never" ? "hidden" : mode;
+    this.setCodeDisplayMode(normalized);
+  }
+
+  cycleCodeDisplayMode() {
+    const order = ["auto", "always", "hidden"];
+    const currentIndex = order.indexOf(this.codeDisplayMode);
+    const nextMode = order[(currentIndex + 1) % order.length];
+    this.setCodeDisplayMode(nextMode);
+    return nextMode;
+  }
+
+  getCodeDisplayLabel() {
+    if (this.codeDisplayMode === "always") return "显示";
+    if (this.codeDisplayMode === "hidden") return "隐藏";
+    return "自动";
+  }
+
+  getDisplayCode(code, screenCellSize, mode = this.codeDisplayMode, forceFull = false) {
+    if (!code || mode === "hidden") return "";
+    if (forceFull) return code;
+    if (mode === "always") return screenCellSize >= 8 ? code : code[0];
+    if (screenCellSize >= 10) return code;
+    if (screenCellSize >= 7) return code[0];
+    return "";
+  }
+
+  getCodeFontSize(screenCellSize, displayCode, forceFull = false) {
+    if (!displayCode) return 0;
+    const base = forceFull
+      ? Math.floor(screenCellSize * (displayCode.length > 1 ? 0.42 : 0.5))
+      : Math.floor(screenCellSize * (displayCode.length > 1 ? 0.48 : 0.55));
+    return clamp(base, 5, Math.floor(screenCellSize * 0.55));
   }
 
   setZoom(zoom) {
@@ -204,6 +233,7 @@ export class PatternCanvasRenderer {
     const drawSide = Math.max(this.grid.width, this.grid.height) * cellSize;
     const offsetX = (usableSide - (drawSide + leftBand + rightBand)) / 2 + this.padding + this.panX;
     const offsetY = (usableSide - (drawSide + headerBand + footerBand)) / 2 + this.padding + this.panY;
+
     return {
       cellSize: cellSize * this.zoomLevel,
       baseCellSize: cellSize,
@@ -220,10 +250,10 @@ export class PatternCanvasRenderer {
 
   getShouldDrawCodes(screenCellSize, isPatternMode = true, overrideMode = null) {
     if (!isPatternMode) return overrideMode === "always";
-    const mode = overrideMode || this.showCodesMode;
+    const mode = overrideMode || this.codeDisplayMode;
     if (mode === "always") return true;
-    if (mode === "never") return false;
-    return screenCellSize >= this.codeVisibleMinCellSize;
+    if (mode === "hidden") return false;
+    return screenCellSize >= 7;
   }
 
   clampPan() {
@@ -259,6 +289,49 @@ export class PatternCanvasRenderer {
       return null;
     }
     return { gridX, gridY };
+  }
+
+  getCellAt(gridX, gridY) {
+    return this.grid?.cells?.[gridY]?.[gridX] || null;
+  }
+
+  getScreenPointForCell(gridX, gridY) {
+    const layout = this.getLayout();
+    return {
+      screenX: layout.offsetX + layout.leftBand + gridX * layout.cellSize + layout.cellSize / 2,
+      screenY: layout.offsetY + layout.headerBand + gridY * layout.cellSize + layout.cellSize / 2
+    };
+  }
+
+  showCellTooltip(gridX, gridY, options = {}) {
+    const cell = this.getCellAt(gridX, gridY);
+    if (!cell?.code) {
+      this.hideCellTooltip();
+      return null;
+    }
+    const position = this.getScreenPointForCell(gridX, gridY);
+    this.cellTooltip = {
+      x: gridX,
+      y: gridY,
+      code: cell.code,
+      color: cell.color,
+      name: cell.name || cell.code,
+      screenX: options.screenX ?? position.screenX,
+      screenY: options.screenY ?? position.screenY,
+      visible: true,
+      locked: Boolean(options.locked)
+    };
+    this.onTooltipChange(this.cellTooltip);
+    this.render();
+    return this.cellTooltip;
+  }
+
+  hideCellTooltip(force = false) {
+    if (!this.cellTooltip) return;
+    if (this.cellTooltip.locked && !force) return;
+    this.cellTooltip = null;
+    this.onTooltipChange(null);
+    this.render();
   }
 
   isPlaced(x, y) {

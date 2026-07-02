@@ -26,12 +26,13 @@ let selectedCode = null;
 let autoSaveTimer = null;
 
 const sizeOptions = [
-  { value: 48, label: "48×48", desc: "小巧清爽" },
+  { value: 48, label: "48×48", desc: "轻巧小图" },
   { value: 64, label: "64×64", desc: "默认推荐" },
   { value: 72, label: "72×72", desc: "细节更多" }
 ];
 
 const canvasView = createPatternCanvas();
+
 const statsPanel = createPaletteStatsPanel({
   onSelectCode(code, meta) {
     selectedCode = code;
@@ -46,7 +47,7 @@ const statsPanel = createPaletteStatsPanel({
     } else {
       canvasView.renderer.clearSelection();
       canvasView.renderer.setToolMode("paint");
-      canvasView.setStatus("已清空当前颜色选择");
+      canvasView.setStatus("");
     }
     statsPanel.render(currentGrid, engine.paletteMapper, selectedCode, currentProgressStats);
   }
@@ -82,11 +83,13 @@ const uploader = createImageUploader({
   },
   async onSizeChange(size) {
     if (activeSize === size) return;
+
     if (!currentImage && currentGrid) {
       uploader.setActiveSize(currentGrid.width);
       canvasView.setStatus("这张图纸来自本地继续记录。想换尺寸的话，需要重新上传原图。");
       return;
     }
+
     const hasProgress = (currentProgressStats?.placedCells ?? 0) > 0;
     if (hasProgress) {
       const shouldContinue = window.confirm("切换尺寸会重新生成图纸，当前拼豆进度会回到新尺寸版本。要继续吗？");
@@ -96,14 +99,16 @@ const uploader = createImageUploader({
       }
       persistCurrentPattern();
     }
+
     activeSize = size;
     uploader.setActiveSize(activeSize);
+
     if (currentImage) {
       await convertCurrentImage();
     }
   },
   async onFileSelect(file) {
-    uploader.setBusy(true, "转换中...");
+    uploader.setBusy(true, "");
     canvasView.setLoading(2, "正在读取图片...");
 
     try {
@@ -115,7 +120,7 @@ const uploader = createImageUploader({
       canvasView.clearLoading();
       canvasView.setStatus("图片处理失败了，换一张边缘更清晰的图片再试试。");
     } finally {
-      uploader.setBusy(false, "转换图纸");
+      uploader.setBusy(false, "");
       canvasView.renderer.resize();
     }
   }
@@ -132,15 +137,10 @@ canvasView.onExportPng(() => {
   download(dataUrl, `cyber-beads-${currentGrid.width}x${currentGrid.height}.png`);
 });
 
-const footer = document.createElement("div");
-footer.className = "footer-note";
-footer.textContent = "主界面只保留最常用功能，复杂参数已收起。你可以直接上传、选色、拼豆、导出。";
-
 root.append(
   uploader.element,
   canvasView.element,
   statsPanel.element,
-  footer,
   libraryDrawer.element
 );
 
@@ -171,7 +171,7 @@ async function convertCurrentImage() {
   currentProgressStats = null;
   canvasView.setGrid(currentGrid);
   canvasView.clearLoading();
-  canvasView.setStatus(`图纸已生成，现在可以直接开始拼 ${activeSize} × ${activeSize}`);
+  canvasView.setStatus("");
   statsPanel.render(currentGrid, engine.paletteMapper, null, canvasView.renderer.progressStats);
   persistCurrentPattern();
 }
@@ -274,9 +274,11 @@ function scheduleAutoSave() {
 
 function persistCurrentPattern() {
   if (!currentGrid) return;
+
   const items = loadSavedPatterns();
   const now = Date.now();
   const progressPercent = currentProgressStats?.progressPercent ?? 0;
+
   const payload = {
     id: currentSavedId || createPatternId(),
     name: `未命名图纸_${currentGrid.width}板`,
@@ -310,17 +312,21 @@ function restoreSavedPattern(item) {
   uploader.setActiveSize(activeSize);
   canvasView.renderer.clearSelection();
   canvasView.renderer.setToolMode("paint");
+
   const restoredGrid = deserializeTargetGrid(item.targetGrid);
   const restoredProgressGrid = deserializeProgressGrid(item.progressGrid, restoredGrid);
+
   canvasView.setGrid(restoredGrid);
   if (item.progressGrid) {
     canvasView.setProgressGrid(restoredProgressGrid);
   }
+
   currentGrid = cloneData(restoredGrid);
   currentProgressGrid = cloneData(restoredProgressGrid || canvasView.renderer.progressGrid);
   currentProgressStats = cloneData(canvasView.renderer.progressStats);
+
   statsPanel.render(currentGrid, engine.paletteMapper, null, currentProgressStats);
-  canvasView.setStatus(`已恢复 ${item.sizeLabel} 图纸，可以继续拼豆了`);
+  canvasView.setStatus("");
 }
 
 function createPatternId() {
@@ -329,6 +335,7 @@ function createPatternId() {
 
 function createPatternThumbnail(grid, progressGrid) {
   if (!grid) return "";
+
   const side = 128;
   const canvas = document.createElement("canvas");
   canvas.width = side;
@@ -349,6 +356,7 @@ function createPatternThumbnail(grid, progressGrid) {
       ctx.fillRect(x * cellSize, y * cellSize, Math.ceil(cellSize), Math.ceil(cellSize));
     }
   }
+
   ctx.globalAlpha = 1;
   return canvas.toDataURL("image/png", 0.82);
 }
@@ -369,6 +377,7 @@ function deserializeTargetGrid(payload) {
   if (payload?.cells) {
     return payload;
   }
+
   const width = payload.width;
   const height = payload.height;
   const cells = payload.codes.map((row, y) => row.map((code, x) => {
@@ -386,6 +395,7 @@ function deserializeTargetGrid(payload) {
         name: ""
       };
     }
+
     const meta = engine.paletteMapper.getByCode(code);
     return {
       x,
@@ -437,6 +447,7 @@ function deserializeProgressGrid(payload, grid) {
   if (payload?.placed && !Array.isArray(payload.placed)) {
     return payload;
   }
+
   if (!payload) {
     return {
       width: grid.width,
@@ -444,11 +455,13 @@ function deserializeProgressGrid(payload, grid) {
       placed: {}
     };
   }
+
   const placed = {};
   (payload.placed || []).forEach((item) => {
     const [x, y, code, placedAt] = item;
     placed[`${x},${y}`] = { x, y, code, placedAt };
   });
+
   return {
     width: payload.width || grid.width,
     height: payload.height || grid.height,

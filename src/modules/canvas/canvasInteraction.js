@@ -4,6 +4,9 @@ export function attachCanvasInteraction(renderer, element) {
   let pinchDistance = 0;
   let editingPointerId = null;
   let panningPointerId = null;
+  let gestureMoved = false;
+  let activePress = null;
+  let tooltipTimer = null;
 
   function getDistance() {
     const values = Array.from(pointers.values());
@@ -21,6 +24,32 @@ export function attachCanvasInteraction(renderer, element) {
     };
   }
 
+  function clearPressTimer() {
+    if (tooltipTimer) {
+      clearTimeout(tooltipTimer);
+      tooltipTimer = null;
+    }
+  }
+
+  function showTooltipAtPoint(point, locked = false) {
+    const hit = renderer.screenToGrid(point.x, point.y);
+    if (!hit) {
+      renderer.hideCellTooltip(true);
+      return;
+    }
+    renderer.showCellTooltip(hit.gridX, hit.gridY, {
+      screenX: point.x,
+      screenY: point.y,
+      locked
+    });
+    clearPressTimer();
+    if (!locked) {
+      tooltipTimer = setTimeout(() => {
+        renderer.hideCellTooltip();
+      }, 1500);
+    }
+  }
+
   element.addEventListener("wheel", (event) => {
     event.preventDefault();
     const factor = event.deltaY < 0 ? 1.12 : 0.9;
@@ -31,13 +60,31 @@ export function attachCanvasInteraction(renderer, element) {
   element.addEventListener("pointerdown", (event) => {
     pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
     const point = getLocalPoint(event);
+    gestureMoved = false;
 
     if (pointers.size === 2) {
+      clearPressTimer();
       pinchDistance = getDistance();
       editingPointerId = null;
       panningPointerId = event.pointerId;
+      renderer.hideCellTooltip(true);
       return;
     }
+
+    activePress = {
+      pointerId: event.pointerId,
+      point,
+      screenX: event.clientX,
+      screenY: event.clientY,
+      longPressed: false
+    };
+
+    clearPressTimer();
+    tooltipTimer = setTimeout(() => {
+      if (!activePress || activePress.pointerId !== event.pointerId || gestureMoved) return;
+      activePress.longPressed = true;
+      showTooltipAtPoint(activePress.point, true);
+    }, 420);
 
     if (renderer.toolMode === "pan" || renderer.mode === "preview" || renderer.mode === "ironed") {
       panningPointerId = event.pointerId;
@@ -60,9 +107,22 @@ export function attachCanvasInteraction(renderer, element) {
     renderer.setHoverFromScreen(point.x, point.y);
 
     if (!pointers.has(event.pointerId)) return;
+    const previous = pointers.get(event.pointerId);
     pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
 
+    if (previous && Math.hypot(event.clientX - previous.x, event.clientY - previous.y) > 2) {
+      gestureMoved = true;
+    }
+    if (activePress && activePress.pointerId === event.pointerId) {
+      const delta = Math.hypot(event.clientX - activePress.screenX, event.clientY - activePress.screenY);
+      if (delta > 6) {
+        gestureMoved = true;
+        clearPressTimer();
+      }
+    }
+
     if (pointers.size === 2) {
+      clearPressTimer();
       const nextDistance = getDistance();
       if (pinchDistance > 0 && nextDistance > 0) {
         const factor = nextDistance / pinchDistance;
@@ -91,12 +151,25 @@ export function attachCanvasInteraction(renderer, element) {
   });
 
   function release(event) {
+    const point = getLocalPoint(event);
+    const wasTap = activePress && activePress.pointerId === event.pointerId && !gestureMoved;
+    const wasLongPress = activePress && activePress.pointerId === event.pointerId && activePress.longPressed;
+
+    clearPressTimer();
+
+    if (wasTap && !wasLongPress) {
+      showTooltipAtPoint(point, false);
+    }
+
     pointers.delete(event.pointerId);
     if (editingPointerId === event.pointerId) {
       editingPointerId = null;
     }
     if (panningPointerId === event.pointerId) {
       panningPointerId = null;
+    }
+    if (activePress?.pointerId === event.pointerId) {
+      activePress = null;
     }
     if (pointers.size <= 1) {
       pinchDistance = 0;

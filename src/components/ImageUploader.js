@@ -6,33 +6,40 @@ export function createImageUploader({
   onLibraryOpen
 }) {
   const element = document.createElement("section");
-  element.className = "panel top-panel";
+  element.className = "top-panel";
   element.innerHTML = `
+    <div class="hero-spark hero-spark-left" aria-hidden="true">+</div>
+    <div class="hero-spark hero-spark-right" aria-hidden="true">+</div>
     <div class="topbar">
-      <div class="brand-copy">
-        <p class="eyebrow">赛博拼豆助手</p>
-        <h1>轻松把图片变成拼豆图纸</h1>
-        <p class="subcopy">上传图片，选一个常用尺寸，就可以开始拼豆。</p>
-      </div>
-      <div class="topbar-actions">
-        <label class="primary-btn upload-entry">
-          <input type="file" accept="image/*" hidden />
-          <span>转换图纸</span>
-        </label>
-        <button type="button" class="secondary-btn" data-action="open-library">我的图纸</button>
-      </div>
+      <button type="button" class="pixel-action-btn upload-btn" data-action="upload-shortcut" aria-label="上传图片">
+        <span class="pixel-action-icon">↑</span>
+        <span class="pixel-action-text">上传图纸</span>
+      </button>
+
+      <label class="title-upload" aria-label="上传图片转换图纸">
+        <input type="file" accept="image/*" hidden />
+        <span class="title-spark" aria-hidden="true">♡</span>
+        <div class="brand-copy">
+          <h1>在线拼豆</h1>
+          <p class="subcopy js-upload-copy"></p>
+        </div>
+        <span class="title-spark" aria-hidden="true">♡</span>
+      </label>
+
+      <button type="button" class="pixel-action-btn library-btn" data-action="open-library">
+        <span class="pixel-action-icon">□</span>
+        <span class="pixel-action-text">我的图纸</span>
+      </button>
     </div>
-    <div class="simple-size-block">
-      <div class="section-title">
-        <strong>图纸尺寸</strong>
-        <span>默认 64×64，适合大部分卡通和头像。</span>
-      </div>
+
+    <div class="simple-size-block panel">
       <div class="size-tabs"></div>
     </div>
   `;
 
   const fileInput = element.querySelector("input[type='file']");
   const tabs = element.querySelector(".size-tabs");
+  const uploadCopy = element.querySelector(".js-upload-copy");
   let activeSize = defaultValue ?? sizes[0].value;
 
   sizes.forEach((item) => {
@@ -63,6 +70,10 @@ export function createImageUploader({
     onLibraryOpen?.();
   });
 
+  element.querySelector("[data-action='upload-shortcut']").addEventListener("click", () => {
+    fileInput.click();
+  });
+
   return {
     element,
     setActiveSize(nextValue) {
@@ -71,10 +82,9 @@ export function createImageUploader({
         tab.classList.toggle("is-active", tab.dataset.value === String(nextValue));
       });
     },
-    setBusy(isBusy, label = "转换图纸") {
-      const entry = element.querySelector(".upload-entry");
-      entry.querySelector("span").textContent = label;
-      entry.classList.toggle("is-busy", isBusy);
+    setBusy(isBusy, label = "") {
+      uploadCopy.textContent = label;
+      element.classList.toggle("is-busy", isBusy);
     }
   };
 }

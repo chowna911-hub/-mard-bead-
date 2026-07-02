@@ -5,17 +5,33 @@ function getTextColor(cell) {
 }
 
 function getOpacityForState(state) {
-  if (state === "target-selected-unplaced") return 0.4;
-  if (state === "target-selected-placed") return 1;
-  if (state === "target-other-placed") return 0.92;
-  if (state === "target-unselected") return 0.65;
+  if (state === "background") return 0;
   if (state === "wrong-placed") return 1;
-  return 0;
+  if (state === "target-other-placed") return 0.92;
+  if (state === "target-selected-placed") return 1;
+  if (state === "target-selected-unplaced") return 0.65;
+  if (state === "target-unselected") return 0.65;
+  return 0.8;
+}
+
+function drawCellCode(ctx, renderer, cell, px, py, cellSize, state, forceFull = false) {
+  const displayCode = renderer.getDisplayCode(cell.code, cellSize, renderer.codeDisplayMode, forceFull);
+  if (!displayCode) return;
+
+  const fontSize = renderer.getCodeFontSize(cellSize, displayCode, forceFull);
+  if (!fontSize) return;
+
+  ctx.globalAlpha = state === "target-selected-unplaced" ? 0.9 : 1;
+  ctx.fillStyle = getTextColor(cell);
+  ctx.font = `${state === "target-selected-placed" ? "800" : "700"} ${fontSize}px "Trebuchet MS", "Segoe UI", sans-serif`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(displayCode, px + cellSize / 2, py + cellSize / 2 + 0.2);
 }
 
 export function renderPatternMode(ctx, renderer, layout) {
   const { grid, hoverCell } = renderer;
-  const { cellSize, offsetX, offsetY, headerBand, footerBand, leftBand, rightBand, drawCodes } = layout;
+  const { cellSize, offsetX, offsetY, headerBand, footerBand, leftBand, rightBand } = layout;
   const widthPx = grid.width * cellSize;
   const heightPx = grid.height * cellSize;
 
@@ -44,14 +60,7 @@ export function renderPatternMode(ctx, renderer, layout) {
         ctx.strokeRect(px + 1, py + 1, cellSize - 2, cellSize - 2);
       }
 
-      if (drawCodes && cell.code && state !== "background" && state !== "target-other-placed") {
-        ctx.globalAlpha = state === "target-selected-unplaced" ? 0.7 : 1;
-        ctx.fillStyle = getTextColor(cell);
-        ctx.font = `${state === "target-selected-placed" ? "800" : "700"} ${Math.min(12, Math.max(9, cellSize * 0.42))}px "Trebuchet MS", "Segoe UI", sans-serif`;
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillText(cell.code, px + cellSize / 2, py + cellSize / 2 + 0.2);
-      }
+      drawCellCode(ctx, renderer, cell, px, py, cellSize, state);
     }
   }
 
@@ -60,7 +69,11 @@ export function renderPatternMode(ctx, renderer, layout) {
     const lineX = index * cellSize;
     ctx.beginPath();
     ctx.lineWidth = index % 10 === 0 ? 1.4 : index % 5 === 0 ? 1 : 0.7;
-    ctx.strokeStyle = index % 10 === 0 ? "rgba(129,146,178,0.6)" : index % 5 === 0 ? "rgba(171,185,208,0.48)" : "rgba(193,203,222,0.34)";
+    ctx.strokeStyle = index % 10 === 0
+      ? "rgba(129,146,178,0.6)"
+      : index % 5 === 0
+        ? "rgba(171,185,208,0.48)"
+        : "rgba(193,203,222,0.34)";
     ctx.moveTo(lineX, 0);
     ctx.lineTo(lineX, heightPx);
     ctx.stroke();
@@ -70,7 +83,11 @@ export function renderPatternMode(ctx, renderer, layout) {
     const lineY = index * cellSize;
     ctx.beginPath();
     ctx.lineWidth = index % 10 === 0 ? 1.4 : index % 5 === 0 ? 1 : 0.7;
-    ctx.strokeStyle = index % 10 === 0 ? "rgba(129,146,178,0.6)" : index % 5 === 0 ? "rgba(171,185,208,0.48)" : "rgba(193,203,222,0.34)";
+    ctx.strokeStyle = index % 10 === 0
+      ? "rgba(129,146,178,0.6)"
+      : index % 5 === 0
+        ? "rgba(171,185,208,0.48)"
+        : "rgba(193,203,222,0.34)";
     ctx.moveTo(0, lineY);
     ctx.lineTo(widthPx, lineY);
     ctx.stroke();
