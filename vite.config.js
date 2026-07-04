@@ -1,7 +1,7 @@
 import { defineConfig } from "vite";
 
 export default defineConfig({
-  base: "/-mard-bead-/",
+  base: "/-perler-beads-/",
   build: {
     outDir: "dist",
     emptyOutDir: true
