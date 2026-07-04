@@ -715,6 +715,12 @@ body {
     padding-inline: 8px;
   }
 
+  #app::before,
+  #app::after,
+  .hero-spark {
+    display: none;
+  }
+
   .topbar {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     grid-template-areas:
@@ -734,6 +740,7 @@ body {
   .library-btn {
     min-width: 0;
     width: 100%;
+    box-shadow: none;
   }
 
   .pixel-action-btn {
