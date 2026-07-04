@@ -3,25 +3,13 @@ import {
   thinThickHighlight,
   removeIsolatedHighlightPixels
 } from "./highlightPreserve.js";
-
-function getLuma(rgb) {
-  return 0.299 * rgb[0] + 0.587 * rgb[1] + 0.114 * rgb[2];
-}
-
-function getSaturation(rgb) {
-  const nr = rgb[0] / 255;
-  const ng = rgb[1] / 255;
-  const nb = rgb[2] / 255;
-  const max = Math.max(nr, ng, nb);
-  const min = Math.min(nr, ng, nb);
-  if (max === 0) return 0;
-  return (max - min) / max;
-}
+import { getLuma, getSaturation } from "./colorUtils.js";
+import { preserveLocalStableColors } from "./localStableColor.js";
 
 export function applyFeaturePreserve(grid, paletteMapper, config) {
   const featureConfig = config.feature || config;
   if (!featureConfig.enableHighlightPreserve && !featureConfig.enableSmallColorFeaturePreserve) {
-    return grid;
+    return { grid, localComponents: [] };
   }
 
   if (featureConfig.enableHighlightPreserve) {
@@ -49,14 +37,14 @@ export function applyFeaturePreserve(grid, paletteMapper, config) {
         cell._sample.sampleCount <= Math.max(6, featureConfig.minFeatureAreaCells * 6);
 
       if (isHighlight) {
-        const nearest = paletteMapper.findNearest(sampleRgb);
+        const nearest = paletteMapper.findNearest(sampleRgb, { enableHueGuard: true });
         cell.code = nearest.code;
         cell.color = nearest.hex;
         cell.hex = nearest.hex;
         cell.rgb = nearest.rgb.slice();
         cell.isHighlight = true;
       } else if (isSmallVividFeature) {
-        const vivid = paletteMapper.findNearest(sampleRgb);
+        const vivid = paletteMapper.findNearest(sampleRgb, { enableHueGuard: true });
         cell.code = vivid.code;
         cell.color = vivid.hex;
         cell.hex = vivid.hex;
@@ -65,5 +53,6 @@ export function applyFeaturePreserve(grid, paletteMapper, config) {
     }
   }
 
-  return grid;
+  const preserved = preserveLocalStableColors(grid, paletteMapper, config);
+  return preserved;
 }

@@ -514,6 +514,18 @@ export class PatternCanvasRenderer {
     this.notifyGridChange();
   }
 
+  clearPlacedBeads() {
+    if (!this.grid || !this.progressGrid) return false;
+    if (!Object.keys(this.progressGrid.placed).length) return false;
+    this.pushHistory();
+    this.progressGrid = createEmptyProgressGrid(this.grid);
+    this.future = [];
+    this.hideCellTooltip(true);
+    this.notifyGridChange();
+    this.onStatus("已清空画布上的拼豆");
+    return true;
+  }
+
   setHoverFromScreen(screenX, screenY) {
     this.hoverCell = this.screenToGrid(screenX, screenY);
     this.render();

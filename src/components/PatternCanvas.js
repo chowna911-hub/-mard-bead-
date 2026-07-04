@@ -59,7 +59,7 @@ export function createPatternCanvas() {
       </button>
       <button type="button" class="tool-card" data-action="reset">
         <span class="tool-icon">↻</span>
-        <span>重置</span>
+        <span>清空</span>
       </button>
       <button type="button" class="tool-card" data-action="export-png">
         <span class="tool-icon">⇧</span>
@@ -125,7 +125,9 @@ export function createPatternCanvas() {
 
   element.querySelector("[data-action='zoom-in']").addEventListener("click", () => renderer.zoomBy(1.18));
   element.querySelector("[data-action='zoom-out']").addEventListener("click", () => renderer.zoomBy(0.86));
-  element.querySelector("[data-action='reset']").addEventListener("click", () => renderer.resetView());
+  element.querySelector("[data-action='reset']").addEventListener("click", () => {
+    renderer.clearPlacedBeads();
+  });
   element.querySelector("[data-action='tool-paint']").addEventListener("click", () => renderer.setToolMode("paint"));
   element.querySelector("[data-action='tool-erase']").addEventListener("click", () => renderer.setToolMode("erase"));
   codeToggle.addEventListener("click", () => {

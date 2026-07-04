@@ -10,6 +10,8 @@ import { cleanupGrid } from "./cleanup.js";
 import { analyzeGridQuality, autoTuneConfigIfNeeded } from "./qualityCheck.js";
 import { normalizeFinalGrid } from "./finalGridNormalize.js";
 import { analyzeMacroRegions } from "./macroRegionAnalysis.js";
+import { buildRegionColorModel } from "./regionColorModel.js";
+import { finalColorSanitize } from "./finalColorSanitize.js";
 
 function isPlainObject(value) {
   return value && typeof value === "object" && !Array.isArray(value);
@@ -47,7 +49,7 @@ export class ImagePixelEngine {
       deepMerge(defaultPixelEngineConfig, getPixelEngineConfigForMode(mode)),
       options.config || {}
     );
-    this.paletteMapper = createPaletteMapper(options.palette);
+    this.paletteMapper = createPaletteMapper(options.palette, this.config.paletteMapping);
   }
 
   async process(image, options = {}) {
@@ -106,7 +108,8 @@ export class ImagePixelEngine {
 
     await Promise.resolve();
     onProgress(74, "highlight / small feature protection");
-    beadGrid = applyFeaturePreserve(beadGrid, this.paletteMapper, config);
+    const preserved = applyFeaturePreserve(beadGrid, this.paletteMapper, config);
+    beadGrid = preserved.grid || preserved;
 
     await Promise.resolve();
     onProgress(86, "outline layer generation");
@@ -117,8 +120,13 @@ export class ImagePixelEngine {
     beadGrid = cleanupGrid(beadGrid, this.paletteMapper, config);
 
     await Promise.resolve();
-    onProgress(98, "final crop");
+    onProgress(97, "final crop");
     beadGrid = normalizeFinalGrid(beadGrid, this.paletteMapper, config);
+
+    await Promise.resolve();
+    onProgress(98, "quality retry");
+    const regionState = buildRegionColorModel(beadGrid, this.paletteMapper);
+    beadGrid = finalColorSanitize(beadGrid, this.paletteMapper, regionState);
 
     onProgress(99, "quality check");
     const qualityReport = analyzeGridQuality(beadGrid, {
@@ -148,6 +156,7 @@ export class ImagePixelEngine {
         fit,
         limitedPalette,
         semanticModel,
+        regionState,
         qualityReport
       }
     };

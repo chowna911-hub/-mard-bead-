@@ -1,18 +1,5 @@
 import { createEmptyCell, createPaletteStat } from "./types.js";
-
-function getLuma(rgb) {
-  return 0.299 * rgb[0] + 0.587 * rgb[1] + 0.114 * rgb[2];
-}
-
-function getSaturation(rgb) {
-  const nr = rgb[0] / 255;
-  const ng = rgb[1] / 255;
-  const nb = rgb[2] / 255;
-  const max = Math.max(nr, ng, nb);
-  const min = Math.min(nr, ng, nb);
-  if (max === 0) return 0;
-  return (max - min) / max;
-}
+import { getLuma, getSaturation, getColorProfile } from "./colorUtils.js";
 
 function getPixel(data, width, x, y) {
   const index = (y * width + x) * 4;
@@ -60,18 +47,9 @@ function getVoteLeader(votes) {
 
 function chooseMappedColor(repRgb, paletteMapper, limitedPalette) {
   const palette = limitedPalette?.length ? limitedPalette : paletteMapper.palette;
-  let best = palette[0];
-  let bestDistance = Number.POSITIVE_INFINITY;
-
-  for (const entry of palette) {
-    const currentDistance = paletteMapper.distance(repRgb, entry.rgb);
-    if (currentDistance < bestDistance) {
-      bestDistance = currentDistance;
-      best = entry;
-    }
-  }
-
-  return best;
+  return paletteMapper.findNearestInPalette(repRgb, palette, {
+    enableHueGuard: true
+  });
 }
 
 function incPaletteStat(stats, meta) {
@@ -183,19 +161,17 @@ export function downsampleToBeadGrid({
       const semanticLeader = getVoteLeader(semanticVotes);
       if (semanticLeader) {
         const semanticMeta = paletteMapper.getByCode(semanticLeader);
-        if (semanticMeta) {
-          mapped = semanticMeta;
-        }
+        if (semanticMeta) mapped = semanticMeta;
       }
 
       const lineRatio = lineVotes / Math.max(1, subjectHits);
       if (lineRatio >= (config.macro?.lineMinBlockRatio || 0.12)) {
-        const outlineMeta = paletteMapper.getByCode(config.outline?.outlineColorCode || "H7") || paletteMapper.getDarkestEntry();
-        mapped = outlineMeta;
+        mapped = paletteMapper.getByCode(config.outline?.outlineColorCode || "H7") || paletteMapper.getDarkestEntry();
       }
 
       const avgSaturation = saturations.reduce((sum, value) => sum + value, 0) / saturations.length;
       const contrast = Math.max(...lumas) - Math.min(...lumas);
+      const sampleProfile = getColorProfile(representative);
 
       const cell = {
         x,
@@ -209,9 +185,10 @@ export function downsampleToBeadGrid({
         isHighlight: false,
         _sample: {
           avgRgb: representative,
-          avgLuma: getLuma(representative),
+          avgLuma: sampleProfile.luma,
           avgSaturation,
           contrast,
+          hueGroup: sampleProfile.hueGroup,
           darkRatio: lumas.filter((value) => value <= config.outline.lineDarknessThreshold).length / lumas.length,
           subjectRatio,
           sampleCount: subjectPixels.length,

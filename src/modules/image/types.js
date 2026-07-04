@@ -31,6 +31,14 @@ export const defaultPixelEngineConfig = {
     quantVoteBoost: 1.15
   },
 
+  paletteMapping: {
+    enableHueGuard: true,
+    crossHuePenalty: 1.35,
+    grayPenaltyForSaturatedSource: 1.45,
+    minSaturationForHueGuard: 0.18,
+    allowCrossHueOnlyIfDeltaEImprovesBy: 0.25
+  },
+
   macro: {
     enableSemanticPrepass: true,
     coreColorCount: 6,
@@ -72,6 +80,17 @@ export const defaultPixelEngineConfig = {
     saturationThreshold: 0.6,
     localContrastThreshold: 35,
     maxDistanceToMainComponent: 2
+  },
+
+  localStableColor: {
+    enable: true,
+    minComponentAreaCells: 2,
+    maxComponentAreaRatio: 0.2,
+    minLocalContrast: 18,
+    minHueConsistency: 0.65,
+    minSaturation: 0.18,
+    preserveMediumSaturationColors: true,
+    localColorDistanceThreshold: 42
   },
 
   detail: {

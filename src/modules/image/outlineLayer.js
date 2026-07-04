@@ -73,7 +73,7 @@ export function generateOutlineLayer(grid, paletteMapper, config) {
   function fallbackResolver(cell) {
     cell.isOutline = false;
     if (cell._sample?.avgRgb) {
-      const fallback = paletteMapper.findNearest(cell._sample.avgRgb);
+      const fallback = paletteMapper.findNearest(cell._sample.avgRgb, { enableHueGuard: true });
       cell.code = fallback.code;
       cell.color = fallback.hex;
       cell.hex = fallback.hex;
