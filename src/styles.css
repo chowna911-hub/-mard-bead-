@@ -124,7 +124,9 @@ body {
   min-height: 50px;
   border-radius: 16px;
   padding: 10px 12px;
-  display: inline-flex;
+  display: inline-grid;
+  grid-auto-flow: column;
+  grid-auto-columns: max-content;
   align-items: center;
   justify-content: center;
   gap: 8px;
@@ -145,6 +147,12 @@ body {
   height: 18px;
   font-size: 1rem;
   line-height: 1;
+  flex-shrink: 0;
+}
+
+.pixel-action-text {
+  display: block;
+  line-height: 1.1;
 }
 
 .title-upload {
@@ -720,6 +728,30 @@ body {
 
   .library-btn {
     grid-area: library;
+  }
+
+  .upload-btn,
+  .library-btn {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .pixel-action-btn {
+    min-height: 56px;
+    padding: 10px 14px;
+    gap: 10px;
+    font-size: 0.88rem;
+  }
+
+  .pixel-action-icon {
+    width: 16px;
+    height: 16px;
+    font-size: 0.92rem;
+  }
+
+  .pixel-action-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .title-upload {
